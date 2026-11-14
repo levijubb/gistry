@@ -27,9 +27,9 @@ Keep `git.ts` and `stacks.ts` free of `vscode` imports so they stay unit-testabl
 
 ## Commits and pull requests
 
-`main` only takes **squash-merged PRs**, and **the PR title becomes the commit message**. Release automation reads these titles, so they must follow [Conventional Commits](https://www.conventionalcommits.org). A CI check enforces this.
+`main` only takes **rebase-merged PRs**, so **every commit lands on `main` as it is** and each one can become its own changelog entry. Keep commits focused (one change each) and write their messages as [Conventional Commits](https://www.conventionalcommits.org). A CI check enforces this on every commit in a PR.
 
-| Title                                                        | Effect on the next release                         |
+| Message                                                      | Effect on the next release                         |
 | ------------------------------------------------------------ | -------------------------------------------------- |
 | `feat: show tags in the legend`                              | minor bump, listed under **Features**              |
 | `fix(graph): misaligned merge curve`                         | patch bump, listed under **Bug Fixes**             |
@@ -37,7 +37,7 @@ Keep `git.ts` and `stacks.ts` free of `vscode` imports so they stay unit-testabl
 | `feat!: …` or a `BREAKING CHANGE:` footer                    | major bump (minor while we're on 0.x)              |
 | `docs:` `refactor:` `test:` `build:` `ci:` `chore:` `style:` | no release on their own, hidden from the changelog |
 
-Write the title for users, because it shows up word for word in the changelog and on the Marketplace.
+Write the subject line for users, because it shows up word for word in the changelog and on the Marketplace. Tidy up fixup commits with `git rebase -i` before merging.
 
 ## Releases
 
@@ -63,10 +63,10 @@ git commit --allow-empty -m "chore: release 1.0.0" -m "Release-As: 1.0.0"
 ### First release (one-time setup)
 
 1. **Create the GitHub repo and push.** Then configure it in **Settings**:
-   1. **General → Pull Requests:** allow squash merging only, with the default commit message set to _Pull request title and description_. release-please reads the conventional PR title from `main`, so merge commits and rebase merges must be off.
+   1. **General → Pull Requests:** allow rebase merging only. release-please reads each conventional commit from `main`, so squash merging (which collapses them) and merge commits must be off.
    2. **Actions → General → Workflow permissions:** keep the default `GITHUB_TOKEN` read-only and tick _Allow GitHub Actions to create and approve pull requests_, so release-please can open the release PR.
    3. **Environments:** create `release` and limit deployments to the `main` branch. `release.yml` deploys to it, and the trusted-publisher policies below refer to it by name.
-   4. _Recommended:_ add a branch ruleset for `main` that requires a pull request, allows only squash merges, blocks force-pushes and deletion, and requires the CI checks (`Lint, typecheck & package`, the three `Test (…)` jobs and `Conventional PR title`). Under **Advanced Security**, turn on private vulnerability reporting, Dependabot alerts and Dependabot security updates.
+   4. _Recommended:_ add a branch ruleset for `main` that requires a pull request, allows only rebase merges, blocks force-pushes and deletion, and requires the CI checks (`Lint, typecheck & package`, the three `Test (…)` jobs and `Conventional commits`). Under **Advanced Security**, turn on private vulnerability reporting, Dependabot alerts and Dependabot security updates.
 2. **VS Code Marketplace.** Sign in at [marketplace.visualstudio.com/manage](https://marketplace.visualstudio.com/manage) and create the publisher `gistry`. It must match `publisher` in `package.json`. Then add a **Trusted Publishing** policy with:
    - Repository owner: `levijubb`
    - Repository: `gistry`
