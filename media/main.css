@@ -216,6 +216,7 @@ body[data-mode='view'] .icon-btn { display: none; }
 .msg {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -608,6 +609,7 @@ body[data-mode='view'] .dr-close { display: grid; }
 }
 @container (max-width: 340px) {
   .pill { max-width: 90px; }
+  .msg .cc-s { display: none; }
   .dr-body, .coauthors { margin-left: 8px; }
 }
 
@@ -724,47 +726,60 @@ body[data-mode='view'] .dr-close { display: grid; }
 :root { --warn: #e5a83a; }
 body.vscode-light { --warn: #b7791f; }
 
+/* Conventional-commit tag: sized to its content, with the scope as a second segment of the
+   same chip (`✦ feat │ api`) so type + scope read as one unit and nothing pads out to a column. */
 .cc {
   --c: var(--text-dim);
   flex: none;
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 19px;
-  padding: 0 6px 0 5px;
+  align-items: stretch;
+  height: 20px;
   border-radius: 6px;
   font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  line-height: 20px;
   color: color-mix(in srgb, var(--c) 82%, var(--text));
   background: color-mix(in srgb, var(--c) 14%, transparent);
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  overflow: hidden;
+  transition: opacity 0.15s, background 0.15s;
 }
-.cc:hover { background: color-mix(in srgb, var(--c) 24%, transparent); }
-.cc svg { flex: none; }
-.cc.synthetic { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent); }
-.cc.breaking { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--del) 65%, transparent); }
-.cc .bang { color: var(--del); font-weight: 800; margin-left: -1px; }
-.cc-mode .cc { width: 78px; }
-.cc.none { visibility: hidden; background: none; }
-.row.dim .cc { opacity: 0.78; }
-
-.scope {
-  flex: none;
+.cc-t {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 0.15s;
+}
+.cc-t svg { flex: none; }
+.cc-s {
+  position: relative;
   max-width: 120px;
+  padding: 0 7px 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--text-dim);
-  padding: 1px 0;
-  border-bottom: 1px dotted transparent;
-  cursor: pointer;
-  margin-right: -2px;
+  color: color-mix(in srgb, var(--c) 38%, var(--text-dim));
+  transition: background 0.15s, color 0.15s;
 }
-.scope:hover { color: var(--text-2); border-bottom-color: currentColor; }
+.cc-s::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: color-mix(in srgb, var(--c) 30%, transparent);
+}
+.cc-slot { flex: none; display: flex; min-width: var(--cc-w, 0px); }
+.cc.live [data-f] { cursor: pointer; }
+.cc.live .cc-t:hover, .cc.live .cc-s:hover { background: color-mix(in srgb, var(--c) 12%, transparent); }
+.cc.live .cc-s:hover { color: color-mix(in srgb, var(--c) 70%, var(--text)); }
+.cc.synthetic { background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent); }
+.cc.synthetic .cc-s::before { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.cc.breaking { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--del) 60%, transparent); }
+.cc .bang { color: var(--del); font-weight: 800; margin-left: -1px; }
+.row.dim .cc { opacity: 0.78; }
 
 .pill.pr { --c: var(--text-dim); font-variant-numeric: tabular-nums; }
 .pill.pr.open { --c: var(--add); }
@@ -833,8 +848,7 @@ body.vscode-light { --warn: #b7791f; }
 .tchip svg { color: var(--c); }
 
 .hc-cc { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
-.hc-cc .cc { cursor: default; }
-.hc-cc .scope { max-width: none; overflow: visible; margin-right: 0; }
+.hc-cc .cc-s { max-width: 150px; }
 .prs.open { color: var(--add); }
 .prs.merged { color: var(--lane-4); }
 .prs.closed { color: var(--del); }
@@ -915,10 +929,9 @@ button.sv-row:hover { background: var(--hover); color: var(--text); }
 .restack-t { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); font-size: 11.5px; white-space: nowrap; flex: none; }
 
 @container (max-width: 560px) {
-  .cc .ct { display: none; }
-  .cc-mode .cc, .cc { width: 21px; padding: 0; justify-content: center; }
-  .cc .bang { display: none; }
-  .scope { max-width: 64px; }
+  .msg .cc .ct, .msg .cc .bang { display: none; }
+  .msg .cc-t { padding: 0 5px; }
+  .msg .cc-s { max-width: 72px; padding: 0 6px 0 5px; }
   .pill.pr .note { display: none; }
   .pill.pr > svg, .pill.stack > svg:first-child { display: none; }
   .pill.stack { min-width: 0; padding: 0 3px; }

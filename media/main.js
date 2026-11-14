@@ -265,7 +265,11 @@
   function ccTag(cc, withData = true) {
     const icon = CC_ICON[CC_TYPES[cc.type][1]] || '';
     const title = `${cc.raw}${cc.scope ? `(${cc.scope})` : ''}${cc.breaking ? ' · breaking change' : ''}`;
-    return `<span class="cc${cc.breaking ? ' breaking' : ''}${cc.synthetic ? ' synthetic' : ''}"${withData ? ` data-f="t-${cc.type}"` : ''} style="--c: ${ccColor(cc.type)}" title="${esc(title)}">${icon}<span class="ct">${esc(cc.type)}</span>${cc.breaking ? '<b class="bang">!</b>' : ''}</span>`;
+    const f = (k) => (withData ? ` data-f="${k}"` : '');
+    const scope = cc.scope
+      ? `<span class="cc-s"${f(`sc${SCOPES.get(cc.scope)}`)} title="Scope: ${esc(cc.scope)}">${esc(cc.scope)}</span>`
+      : '';
+    return `<span class="cc${cc.breaking ? ' breaking' : ''}${cc.synthetic ? ' synthetic' : ''}${withData ? ' live' : ''}" style="--c: ${ccColor(cc.type)}"><span class="cc-t"${f(`t-${cc.type}`)} title="${esc(title)}">${icon}<span class="ct">${esc(cc.type)}</span>${cc.breaking ? '<b class="bang">!</b>' : ''}</span>${scope}</span>`;
   }
 
   const SEG_COLORS = [1, 4, 5, 6, 3, 7, 2];
@@ -684,14 +688,10 @@
     const p = parseCommit(c);
     const seg = SEG.get(c.hash);
     const showCc = p.cc && (!p.cc.synthetic || G.ccMode);
-    let lead = '';
-    if (showCc) {
-      lead =
-        ccTag(p.cc) +
-        (p.cc.scope
-          ? `<span class="scope" data-f="sc${SCOPES.get(p.cc.scope)}" title="Scope: ${esc(p.cc.scope)}">${esc(p.cc.scope)}</span>`
-          : '');
-    } else if (G.ccMode) lead = '<span class="cc none"></span>';
+    const tag = showCc ? ccTag(p.cc) : '';
+    // In a conventional-commit history every row gets a slot (sized in alignTags) so subjects
+    // line up, while the chip inside stays as wide as its own text.
+    const lead = G.ccMode ? `<span class="cc-slot">${tag}</span>` : tag;
     const text = showCc ? sentence(p.cc.desc) : p.cc?.synthetic ? sentence(p.cc.desc) : p.text;
     return `<div class="row${dim ? ' dim' : ''}${selected === c.hash ? ' sel' : ''} ${focusClasses(c, r)}" data-r="${r}" data-hash="${c.hash}" tabindex="-1" data-vscode-context="${ctx}">
       <div class="gut" data-f="${seg ? seg.key : 'a' + G.rows[r].alloc.id}"></div>
@@ -845,12 +845,28 @@
         if (i < 18) el.style.setProperty('--i', i);
       });
     }
+    alignTags();
     applyFocus();
 
     const sc = app.querySelector('.scroller');
     if (sc && !opts.resetScroll) sc.scrollTop = prevScroll;
     observeLoadMore();
   }
+
+  /** Sizes the tag column to the widest tag in view (capped, so one long scope can't push every row). */
+  function alignTags() {
+    const rows = app.querySelector('.rows');
+    if (!rows || !G?.ccMode) return;
+    let w = 0;
+    for (const el of rows.querySelectorAll('.cc-slot > .cc')) w = Math.max(w, el.offsetWidth);
+    rows.style.setProperty('--cc-w', `${Math.min(w, 168)}px`);
+  }
+  // Tag widths change at the narrow-layout breakpoint, so re-measure when the view resizes.
+  let alignFrame = 0;
+  new ResizeObserver(() => {
+    cancelAnimationFrame(alignFrame);
+    alignFrame = requestAnimationFrame(alignTags);
+  }).observe(app);
 
   function listHtml() {
     const commits = S.commits;
@@ -878,7 +894,7 @@
     const pad = width - LIST_INSET;
     return `<div class="scroller" id="scroller"><div class="list">
       ${graphSvg(commits, offset, showUnc, width, height, fadeFrom)}
-      <div class="rows${G.ccMode ? ' cc-mode' : ''}" style="padding-top:${TOP}px; --pad:${pad}px">${rows}</div>
+      <div class="rows" style="padding-top:${TOP}px; --pad:${pad}px">${rows}</div>
       ${dangling ? '<div class="end-cap"></div>' : '<div style="height:10px"></div>'}
     </div></div>`;
   }
@@ -934,7 +950,7 @@
       <div class="dr-head">
         ${avatar(c.author, c.email, ai)}
         <div class="dr-title">
-          ${cc ? `<div class="dr-cc">${ccTag(cc)}${cc.scope ? `<span class="scope" data-f="sc${SCOPES.get(cc.scope)}">${esc(cc.scope)}</span>` : ''}</div>` : ''}
+          ${cc ? `<div class="dr-cc">${ccTag(cc)}</div>` : ''}
           <div class="dr-subject">${esc(title)}</div>
           <div class="dr-meta">
             ${p.pr ? prPill(p.pr, prInfo, true) + '<span class="sep-dot">·</span>' : ''}
@@ -1161,10 +1177,7 @@
     const merge = a.merge !== null ? S.commits[a.merge] : null;
     const p = parseCommit(c);
     const seg = SEG.get(c.hash);
-    const typeRow =
-      p.cc && !p.cc.synthetic
-        ? `<dt>Type</dt><dd class="hc-cc">${ccTag(p.cc, false)}${p.cc.scope ? `<span class="scope">${esc(p.cc.scope)}</span>` : ''}</dd>`
-        : '';
+    const typeRow = p.cc && !p.cc.synthetic ? `<dt>Type</dt><dd class="hc-cc">${ccTag(p.cc, false)}</dd>` : '';
     if (seg) {
       const b = seg.branch;
       const pr = b.pr || S.prs?.[b.name];
@@ -1439,7 +1452,7 @@
       const seg = [...STACK_BRANCH.values()].find((x) => x.key === k);
       return seg ? showSegment(seg) : togglePin(k, true);
     }
-    const tagEl = t.closest('.row .cc[data-f], .row .scope[data-f], .dr-cc [data-f]');
+    const tagEl = t.closest('.cc.live [data-f]');
     if (tagEl) return togglePin(tagEl.dataset.f, false);
     const jumpEl = t.closest('[data-jump]');
     if (jumpEl) return select(jumpEl.dataset.jump, true);
