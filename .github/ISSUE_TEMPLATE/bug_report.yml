@@ -1,0 +1,44 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead. Screenshots help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: If the repository's shape matters (merges, stacks, many branches…), describe it or share a public repo.
+  - type: input
+    id: gistry
+    attributes:
+      label: Gistry version
+      placeholder: e.g. 0.3.0
+    validations:
+      required: true
+  - type: input
+    id: editor
+    attributes:
+      label: Editor and version
+      description: From Help → About.
+      placeholder: e.g. VS Code 1.106.0, Cursor 2.1
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Windows, Linux, Remote (SSH / WSL / container)]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Anything relevant from Help → Toggle Developer Tools → Console, or the Git output channel.
+      render: text

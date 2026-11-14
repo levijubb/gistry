@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest an idea for Gistry
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The workflow or question you have about your history that Gistry doesn't help with yet.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?

@@ -1,0 +1,213 @@
+{
+  "name": "gistry",
+  "displayName": "Gistry — Commit History",
+  "description": "A beautiful commit graph for VS Code and Cursor: branch lanes, stacked PRs, conventional commits and more.",
+  "version": "0.3.0",
+  "publisher": "gistry",
+  "license": "MIT",
+  "homepage": "https://github.com/levijubb/gistry#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/levijubb/gistry.git"
+  },
+  "bugs": {
+    "url": "https://github.com/levijubb/gistry/issues"
+  },
+  "qna": "https://github.com/levijubb/gistry/discussions",
+  "pricing": "Free",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "git graph",
+    "git history",
+    "git log",
+    "commit graph",
+    "branches",
+    "stacked prs",
+    "pull requests",
+    "co-author",
+    "cursor"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#16161d",
+    "theme": "dark"
+  },
+  "main": "./out/extension.js",
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "views": {
+      "gistry": [
+        {
+          "type": "webview",
+          "id": "gistry.history",
+          "name": "Commit History",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gistry.focus",
+        "title": "Show Commit History in Sidebar",
+        "category": "Gistry"
+      },
+      {
+        "command": "gistry.openInEditor",
+        "title": "Open Commit History",
+        "category": "Gistry",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "gistry.refresh",
+        "title": "Refresh Commit History",
+        "category": "Gistry",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gistry.copySha",
+        "title": "Copy Commit SHA"
+      },
+      {
+        "command": "gistry.copyMessage",
+        "title": "Copy Commit Message"
+      },
+      {
+        "command": "gistry.createBranch",
+        "title": "Create Branch from Commit…"
+      },
+      {
+        "command": "gistry.checkout",
+        "title": "Checkout Commit (Detached)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gistry.refresh",
+          "when": "view == gistry.history",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gistry.openInEditor",
+          "when": "view == gistry.history",
+          "group": "navigation@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "gistry.copySha",
+          "when": "webviewSection == 'gistryCommit'",
+          "group": "1_copy@1"
+        },
+        {
+          "command": "gistry.copyMessage",
+          "when": "webviewSection == 'gistryCommit'",
+          "group": "1_copy@2"
+        },
+        {
+          "command": "gistry.createBranch",
+          "when": "webviewSection == 'gistryCommit'",
+          "group": "2_git@1"
+        },
+        {
+          "command": "gistry.checkout",
+          "when": "webviewSection == 'gistryCommit'",
+          "group": "2_git@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "gistry.copySha",
+          "when": "false"
+        },
+        {
+          "command": "gistry.copyMessage",
+          "when": "false"
+        },
+        {
+          "command": "gistry.createBranch",
+          "when": "false"
+        },
+        {
+          "command": "gistry.checkout",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Gistry",
+      "properties": {
+        "gistry.avatars": {
+          "type": "string",
+          "enum": [
+            "remote",
+            "initials"
+          ],
+          "enumDescriptions": [
+            "Load author photos from GitHub (for noreply addresses) or Gravatar, falling back to initials.",
+            "Never make network requests; always show initials."
+          ],
+          "default": "remote",
+          "description": "Where author avatars come from."
+        },
+        "gistry.pageSize": {
+          "type": "number",
+          "default": 200,
+          "minimum": 20,
+          "description": "How many commits to load at a time."
+        },
+        "gistry.github.pullRequests": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show pull request numbers, status and stacked-PR bases from GitHub. Uses your existing GitHub sign-in in the editor; never prompts unless you click “Connect GitHub”."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gistry",
+          "title": "Gistry",
+          "icon": "media/icon.svg"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "biome check .",
+    "fix": "biome check --write .",
+    "test": "npm run compile && npm run test:unit && npm run test:integration",
+    "test:unit": "node --test --test-reporter=spec \"out/test/unit/**/*.test.js\"",
+    "test:integration": "vscode-test",
+    "package": "vsce package --no-dependencies",
+    "check": "npm run lint && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.19.2",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.1",
+    "ovsx": "^1.4.0",
+    "typescript": "^7.0.2"
+  }
+}
