@@ -395,6 +395,7 @@ body { --sk: color-mix(in srgb, var(--text) 7%, transparent); --sk-dot: color-mi
 .card.enter .branches,
 .card.enter .count,
 .card.enter .ref-btn .label { animation: fade 0.3s ease-out both; }
+.card.enter .empty > div { animation: settle 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
 .empty {
   flex: 1;
@@ -404,8 +405,28 @@ body { --sk: color-mix(in srgb, var(--text) 7%, transparent); --sk-dot: color-mi
   padding: 32px;
   color: var(--text-dim);
 }
-.empty h3 { margin: 12px 0 4px; color: var(--text); font-weight: 500; font-size: 14px; }
-.empty p { margin: 0; max-width: 300px; }
+.empty h3 { margin: 14px 0 5px; color: var(--text); font-weight: 500; font-size: 14px; }
+.empty p { margin: 0 auto; max-width: 300px; line-height: 1.5; text-wrap: pretty; }
+.empty p b { color: var(--text-2); font-weight: 500; }
+.empty p code { font-family: var(--mono); font-size: 0.92em; padding: 0.5px 4px; border-radius: 4px; background: var(--chip); color: var(--text-2); }
+.empty-ic { display: inline-grid; color: var(--lane-0); opacity: 0.7; }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+.empty-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--chip);
+  color: var(--text);
+  font-size: 12.5px;
+  transition: background 0.15s, transform 0.1s;
+}
+.empty-btn:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.empty-btn:active { transform: scale(0.97); }
+.empty-btn.primary {
+  background: var(--vscode-button-background, var(--accent));
+  color: var(--vscode-button-foreground, #fff);
+}
+.empty-btn.primary:hover { background: var(--vscode-button-hoverBackground, color-mix(in srgb, var(--accent) 88%, white)); }
 
 .hovercard {
   position: fixed;

@@ -32,11 +32,13 @@ export class HistoryController implements vscode.Disposable {
     | { root: string; at: number; connected: boolean; prs: Map<string, PrInfo>; version: number; inflight?: boolean }
     | undefined;
   private stackCache: { key: string; result: StackResult } | undefined;
+  /** Undefined while Git is disabled or not installed; see attach(). */
+  private api: API | undefined;
 
   constructor(
     private readonly webview: vscode.Webview,
     private readonly ctx: vscode.ExtensionContext,
-    private readonly api: API,
+    api: API | undefined,
     private readonly mode: Mode,
     private readonly onClose?: () => void
   ) {
@@ -49,12 +51,8 @@ export class HistoryController implements vscode.Disposable {
 
     this.disposables.push(
       webview.onDidReceiveMessage((m) => this.onMessage(m)),
-      api.onDidOpenRepository(() => {
-        if (!this.repo) this.selectRepo(this.pickRepo());
-      }),
-      api.onDidChangeState(() => this.reload(true)),
-      api.onDidCloseRepository((r) => {
-        if (r === this.repo) this.selectRepo(this.pickRepo());
+      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        if (!this.repo) this.reload(true);
       }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration('gistry')) {
@@ -63,7 +61,23 @@ export class HistoryController implements vscode.Disposable {
         }
       })
     );
-    this.selectRepo(this.pickRepo(), false);
+    if (api) this.attach(api, false);
+  }
+
+  /** Connects to the Git API (at construction, or later once Git becomes enabled). */
+  attach(api: API, load = true) {
+    if (this.api) return;
+    this.api = api;
+    this.disposables.push(
+      api.onDidOpenRepository(() => {
+        if (!this.repo) this.selectRepo(this.pickRepo());
+      }),
+      api.onDidChangeState(() => this.reload(true)),
+      api.onDidCloseRepository((r) => {
+        if (r === this.repo) this.selectRepo(this.pickRepo());
+      })
+    );
+    this.selectRepo(this.pickRepo(), load);
   }
 
   dispose() {
@@ -85,6 +99,7 @@ export class HistoryController implements vscode.Disposable {
   }
 
   private pickRepo(): Repository | undefined {
+    if (!this.api) return undefined;
     const editor = vscode.window.activeTextEditor;
     if (editor) {
       const r = this.api.getRepository(editor.document.uri);
@@ -124,7 +139,7 @@ export class HistoryController implements vscode.Disposable {
   }
 
   private git(args: string[]) {
-    return runGit(this.api.git.path, this.repo!.rootUri.fsPath, args);
+    return runGit(this.api!.git.path, this.repo!.rootUri.fsPath, args);
   }
 
   private countUncommitted(repo: Repository): number {
@@ -156,18 +171,27 @@ export class HistoryController implements vscode.Disposable {
   }
 
   private async load(force: boolean) {
+    const api = this.api;
+    if (!api) {
+      this.post({ type: 'empty', reason: 'nogit', mode: this.mode });
+      return;
+    }
     const repo = this.repo;
-    const repos = this.api.repositories.map((r) => ({
+    const repos = api.repositories.map((r) => ({
       root: r.rootUri.fsPath,
       name: path.basename(r.rootUri.fsPath),
     }));
 
     if (!repo) {
-      this.post({ type: 'empty', reason: this.api.state === 'initialized' ? 'norepo' : 'loading', mode: this.mode });
+      // The Git extension only reports 'initialized' after its initial repository scan, so an
+      // empty list then really means there's no repository here (not that it's still looking).
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      const reason = api.state !== 'initialized' ? 'loading' : folders.length ? 'norepo' : 'nofolder';
+      this.post({ type: 'empty', reason, folder: folders.length === 1 ? folders[0].name : undefined, mode: this.mode });
       return;
     }
 
-    const gitPath = this.api.git.path;
+    const gitPath = api.git.path;
     const root = repo.rootUri.fsPath;
     const head = repo.state.HEAD;
     const uncommitted = this.countUncommitted(repo);
@@ -328,7 +352,7 @@ export class HistoryController implements vscode.Disposable {
           await this.reload(true);
           break;
         case 'selectRepo': {
-          const repo = this.api.repositories.find((r) => r.rootUri.fsPath === m.root);
+          const repo = this.api?.repositories.find((r) => r.rootUri.fsPath === m.root);
           if (repo && repo !== this.repo) this.selectRepo(repo);
           break;
         }
@@ -337,7 +361,7 @@ export class HistoryController implements vscode.Disposable {
           await this.reload(true);
           break;
         case 'details': {
-          if (!this.repo) return;
+          if (!this.repo || !this.api) return;
           const { base, files } = await readChanges(this.api.git.path, this.repo.rootUri.fsPath, m.hash, m.parent);
           this.post({ type: 'details', hash: m.hash, base, files });
           break;
@@ -357,6 +381,18 @@ export class HistoryController implements vscode.Disposable {
         case 'connectGitHub':
           if (this.repo && this.remote?.info) this.pullRequests(this.repo.rootUri.fsPath, this.remote.info, true);
           break;
+        case 'run': {
+          // Actions offered by the empty states. Mapped here so the webview can't run arbitrary commands.
+          const commands: Record<string, [string, ...unknown[]]> = {
+            init: ['git.init'],
+            clone: ['git.clone'],
+            openFolder: ['workbench.action.files.openFolder'],
+            gitSettings: ['workbench.action.openSettings', 'git.enabled'],
+          };
+          const run = commands[String(m.action)];
+          if (run) await vscode.commands.executeCommand(...run);
+          break;
+        }
         case 'openScm':
           await vscode.commands.executeCommand('workbench.view.scm');
           break;
@@ -372,7 +408,7 @@ export class HistoryController implements vscode.Disposable {
   }
 
   private async openDiff(m: { hash: string; base: string; path: string; oldPath?: string; status: string }) {
-    if (!this.repo) return;
+    if (!this.repo || !this.api) return;
     const root = this.repo.rootUri;
     const rightUri = vscode.Uri.joinPath(root, m.path);
     const leftUri = vscode.Uri.joinPath(root, m.oldPath ?? m.path);

@@ -711,7 +711,7 @@
     return `<header class="hdr">
       <span class="title">Commit History</span>${count}${repoName}
       <span class="spacer"></span>
-      ${S ? `<button class="ref-btn" id="refBtn" aria-haspopup="menu" aria-expanded="false" title="Switch branch">${isAll ? I.all : I.branch}<span class="label">${esc(label)}</span>${S && STACK_BRANCH.has(label) ? `<span class="lvl" style="--c: var(--lane-${STACK_BRANCH.get(label).color})">${STACK_BRANCH.get(label).level}/${STACK_BRANCH.get(label).total}</span>` : ''}${I.chevron}</button>` : '<span class="ref-btn ghost" aria-hidden="true"></span>'}
+      ${S ? `<button class="ref-btn" id="refBtn" aria-haspopup="menu" aria-expanded="false" title="Switch branch">${isAll ? I.all : I.branch}<span class="label">${esc(label)}</span>${S && STACK_BRANCH.has(label) ? `<span class="lvl" style="--c: var(--lane-${STACK_BRANCH.get(label).color})">${STACK_BRANCH.get(label).level}/${STACK_BRANCH.get(label).total}</span>` : ''}${I.chevron}</button>` : view === 'skeleton' ? '<span class="ref-btn ghost" aria-hidden="true"></span>' : ''}
       <button class="icon-btn" id="refreshBtn" title="Refresh">${I.refresh}</button>
       ${mode === 'panel' ? `<button class="icon-btn" id="closeBtn" title="Close">${I.close}</button>` : ''}
       <div class="progress" id="progress"></div>
@@ -807,15 +807,43 @@
     return `<div class="scroller"><div class="skel" aria-hidden="true">${'<div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div>'.repeat(14)}</div></div>`;
   }
 
+  const EMPTY_ICON = {
+    graph:
+      '<svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="22" cy="10" r="4.5" stroke-dasharray="2.6 2.3"/><path d="M22 17v10" stroke-dasharray="2.5 3.5"/><circle cx="22" cy="34" r="4.5"/></svg>',
+    folder:
+      '<svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 14.5a3 3 0 0 1 3-3h7.2l3.3 3.6H34a3 3 0 0 1 3 3V31a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3z"/><path d="M22 20.5v8M18 24.5h8" stroke-linecap="round" stroke-dasharray="2.4 2.2"/></svg>',
+    off: '<svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="22" cy="10" r="4.5"/><circle cx="22" cy="34" r="4.5"/><path d="M22 15v4M22 25v4" /><path d="M10 10l24 24" opacity=".8"/></svg>',
+  };
+
   function emptyHtml() {
     const e = emptyInfo || {};
+    const btn = (action, label, primary) =>
+      `<button class="empty-btn${primary ? ' primary' : ''}" data-run="${action}">${label}</button>`;
     const map = {
-      norepo: ['No repository', 'Open a folder that contains a Git repository to see its history here.'],
-      nocommits: ['No commits yet', 'Make your first commit and it will show up here.'],
-      loading: ['Looking for repositories…', ''],
+      nofolder: [
+        'folder',
+        'No folder open',
+        'Open a folder that contains a Git repository to see its history here.',
+        btn('openFolder', 'Open Folder', true) + btn('clone', 'Clone Repository'),
+      ],
+      norepo: [
+        'folder',
+        'Not a Git repository',
+        e.folder
+          ? `<b>${esc(e.folder)}</b> isn’t tracked by Git yet. Initialize a repository to start recording history.`
+          : 'This folder isn’t tracked by Git yet. Initialize a repository to start recording history.',
+        btn('init', 'Initialize Repository', true) + btn('openFolder', 'Open Folder'),
+      ],
+      nogit: [
+        'off',
+        'Git isn’t available',
+        'Gistry reads history through the editor’s built-in Git support. Make sure Git is installed and the <code>git.enabled</code> setting is on.',
+        btn('gitSettings', 'Open Git Settings'),
+      ],
+      nocommits: ['graph', 'No commits yet', 'Make your first commit and it will show up here.', ''],
     };
-    const [t, p] = map[e.reason] || map.loading;
-    return `<div class="empty"><div><svg class="c0" width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".7"><circle cx="22" cy="10" r="4.5" stroke-dasharray="2.6 2.3"/><path d="M22 17v10" stroke-dasharray="2.5 3.5"/><circle cx="22" cy="34" r="4.5"/></svg><h3>${t}</h3><p>${p}</p></div></div>`;
+    const [icon, t, p, actions] = map[e.reason] || map.nocommits;
+    return `<div class="empty"><div><span class="empty-ic">${EMPTY_ICON[icon]}</span><h3>${t}</h3><p>${p}</p>${actions ? `<div class="empty-actions">${actions}</div>` : ''}</div></div>`;
   }
 
   function errorHtml() {
@@ -837,7 +865,8 @@
     else if (view === 'error') body = errorHtml();
     else body = listHtml();
 
-    const enter = view === 'list' && opts.animate;
+    const enter = (view === 'list' && opts.animate) || (view !== 'list' && view !== renderedView);
+    renderedView = view;
     app.innerHTML = `<div class="shell"><div class="card${enter ? ' enter' : ''}">${headerHtml()}${view === 'list' ? branchesHtml() : ''}${body}${drawerHtml()}</div></div>`;
     if (enter) {
       // Stagger the rows that are on screen; everything below shares the last delay.
@@ -852,6 +881,8 @@
     if (sc && !opts.resetScroll) sc.scrollTop = prevScroll;
     observeLoadMore();
   }
+
+  let renderedView = view;
 
   /** Sizes the tag column to the widest tag in view (capped, so one long scope can't push every row). */
   function alignTags() {
@@ -1434,6 +1465,8 @@
       return vscode.postMessage({ type: 'refresh' });
     }
     if (t.closest('#closeBtn')) return vscode.postMessage({ type: 'close' });
+    const runEl = t.closest('[data-run]');
+    if (runEl) return vscode.postMessage({ type: 'run', action: runEl.dataset.run });
     if (t.closest('#drClose')) return select(null);
     if (t.closest('#copySha') && selected)
       return vscode.postMessage({ type: 'copy', text: selected, label: selected.slice(0, 7) });
