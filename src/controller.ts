@@ -11,6 +11,10 @@ export const ALL_BRANCHES = '__all__';
 
 type Mode = 'view' | 'panel';
 
+// Painted with the very first frame, before main.js has loaded, so the view never flashes
+// blank. main.js adopts this markup instead of re-rendering it (see skeletonHtml there).
+const BOOT_SHELL = `<div class="shell"><div class="card"><header class="hdr"><span class="title">Commit History</span><span class="spacer"></span><span class="ref-btn ghost" aria-hidden="true"></span></header><div class="scroller"><div class="skel" aria-hidden="true">${'<div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div>'.repeat(14)}</div></div></div></div>`;
+
 export class HistoryController implements vscode.Disposable {
   private repo: Repository | undefined;
   private ref: string | null = null;
@@ -393,7 +397,7 @@ export class HistoryController implements vscode.Disposable {
 <title>Commit History</title>
 </head>
 <body data-mode="${this.mode}">
-<div id="app"></div>
+<div id="app">${BOOT_SHELL}</div>
 <script nonce="${nonce}" src="${media('main.js')}"></script>
 </body>
 </html>`;

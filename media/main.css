@@ -197,8 +197,6 @@ body[data-mode='view'] .icon-btn { display: none; }
 .list { position: relative; padding: 0 10px; }
 .graph { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1; overflow: visible; }
 .rows { position: relative; }
-.rows.fade-in { animation: fadein 0.25s ease-out; }
-@keyframes fadein { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 
 .row {
   height: 34px;
@@ -323,14 +321,79 @@ body[data-mode='view'] .icon-btn { display: none; }
 .row.uncommitted .subject { color: var(--text-dim); font-style: normal; }
 .end-cap { height: 26px; }
 
-.skel .bar {
-  height: 9px;
-  border-radius: 5px;
-  background: linear-gradient(90deg, var(--chip) 0%, color-mix(in srgb, var(--text) 13%, transparent) 50%, var(--chip) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
+/* Loading skeleton. Shapes mirror a real row (graph dot, tag, subject, avatar, name, time) so
+   content resolves in place. It waits a beat before fading in so fast loads never flash it. */
+.skel {
+  position: relative;
+  padding: 8px 10px 0;
+  animation: fade 0.35s ease-out 0.16s both;
 }
-@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.skel::before {
+  content: '';
+  position: absolute;
+  left: 25.2px;
+  top: 25px;
+  bottom: 0;
+  width: 1.6px;
+  background: linear-gradient(var(--sk), transparent);
+}
+.sk-row {
+  --sk-w: 52%;
+  position: relative;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px 0 54px;
+  animation: sk-pulse 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--n, 0) * 90ms);
+}
+.sk-row::before {
+  content: '';
+  position: absolute;
+  left: 12.5px;
+  top: 13.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sk-dot);
+}
+.sk-row i { flex: none; display: block; height: 8px; border-radius: 4px; background: var(--sk); }
+.sk-row i:nth-child(1) { width: 40px; height: 16px; border-radius: 5px; margin-right: -4px; }
+.sk-row i:nth-child(2) { width: var(--sk-w); flex: 0 1 auto; margin-right: auto; }
+.sk-row i:nth-child(3) { width: 18px; height: 18px; border-radius: 50%; margin-right: -5px; }
+.sk-row i:nth-child(4) { width: 84px; margin-right: 42px; }
+.sk-row i:nth-child(5) { width: 18px; margin-left: 12px; }
+.sk-row:nth-child(3n + 2) { --sk-w: 38%; }
+.sk-row:nth-child(4n + 3) { --sk-w: 61%; }
+.sk-row:nth-child(5n + 4) { --sk-w: 44%; }
+.sk-row:nth-child(3n + 2) i:nth-child(4) { width: 64px; margin-right: 62px; }
+.sk-row:nth-child(4n) i:nth-child(1) { width: 32px; }
+.sk-row:nth-child(2) { --n: 1; }
+.sk-row:nth-child(3) { --n: 2; }
+.sk-row:nth-child(4) { --n: 3; }
+.sk-row:nth-child(5) { --n: 4; }
+.sk-row:nth-child(6) { --n: 5; }
+.sk-row:nth-child(7) { --n: 6; }
+.sk-row:nth-child(8) { --n: 7; }
+.sk-row:nth-child(n + 9) { --n: 8; }
+body { --sk: color-mix(in srgb, var(--text) 7%, transparent); --sk-dot: color-mix(in srgb, var(--text) 20%, transparent); }
+@keyframes sk-pulse { 50% { opacity: 0.45; } }
+
+.ref-btn.ghost { width: 96px; pointer-events: none; }
+.ref-btn.ghost::before { content: ''; width: 100%; height: 8px; border-radius: 4px; background: var(--sk); }
+
+/* First paint of a history (and switching branch): rows settle in top to bottom. */
+@keyframes fade { from { opacity: 0; } }
+@keyframes settle { from { opacity: 0; transform: translateY(4px); } }
+.card.enter .rows > .row {
+  animation: settle 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(var(--i, 18) * 14ms);
+}
+.card.enter .graph { animation: fade 0.5s ease-out both; }
+.card.enter .branches,
+.card.enter .count,
+.card.enter .ref-btn .label { animation: fade 0.3s ease-out both; }
 
 .empty {
   flex: 1;
@@ -449,10 +512,18 @@ body[data-mode='view'] .icon-btn { display: none; }
   flex-direction: column;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 96%, var(--text));
-  animation: rise 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   min-height: 0;
 }
-@keyframes rise { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer.opening { animation: rise 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.drawer.closing {
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.16s ease-out;
+}
+@keyframes rise { from { transform: translateY(14px); opacity: 0; } }
+.drawer.files-in .file { animation: settle 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 12ms); }
+.drawer.files-in .files-head .stat { animation: fade 0.25s ease-out both; }
 .dr-head { display: flex; gap: 12px; padding: 14px 14px 10px 16px; align-items: flex-start; }
 .dr-head .av { --s: 30px; margin-top: 2px; }
 .dr-head .av .badge { box-shadow: 0 0 0 2px var(--surface); }
@@ -528,6 +599,8 @@ body[data-mode='view'] .dr-close { display: grid; }
 .dr-error { color: var(--del); padding: 8px; font-size: 12.5px; }
 
 @container (max-width: 560px) {
+  .sk-row i:nth-child(4) { display: none; }
+  .sk-row i:nth-child(3) { margin-right: 0; }
   .author { width: auto; }
   .author .name { display: none; }
   .row { gap: 10px; }
