@@ -197,7 +197,8 @@
     "test:unit": "node --test --test-reporter=spec \"out/test/unit/**/*.test.js\"",
     "test:integration": "vscode-test",
     "package": "vsce package --no-dependencies",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "npm run lint && npm run typecheck && npm test",
+    "screenshots": "npm run compile && node scripts/screenshots/render.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.7",
