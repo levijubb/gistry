@@ -256,6 +256,7 @@
     return (c._p = { cc, pr, text: cc ? cc.desc : subject });
   }
 
+  const richText = (t) => esc(t).replace(/`([^`\n]+)`/g, '<code>$1</code>');
   const sentence = (t) => (/^[a-z]+(\s|$)/.test(t) ? t[0].toUpperCase() + t.slice(1) : t);
   const ccColor = (type) => {
     const c = CC_TYPES[type]?.[0];
@@ -938,12 +939,12 @@
         </div>
         <button class="icon-btn dr-close" id="drClose" title="Close (Esc)">${I.close}</button>
       </div>
-      ${cc?.breaking ? `<div class="breaking-note">${I.warn}<div><b>Breaking change</b>${cc.breakingNote ? `<div>${esc(cc.breakingNote)}</div>` : ''}</div></div>` : ''}
+      ${cc?.breaking ? `<div class="breaking-note">${I.warn}<div><b>Breaking change</b>${cc.breakingNote ? `<div>${richText(cc.breakingNote)}</div>` : ''}</div></div>` : ''}
       ${SEG.has(c.hash) ? '' : lineageHtml(c)}
       <div class="dr-scroll">
-        ${SEG.has(c.hash) ? stackViewHtml(SEG.get(c.hash)) : ''}
-        ${body ? `<div class="dr-body">${esc(body)}</div>` : ''}
+        ${body ? `<div class="dr-body">${richText(body)}</div>` : ''}
         ${co ? `<div class="coauthors">${co}</div>` : ''}
+        ${SEG.has(c.hash) ? stackViewHtml(SEG.get(c.hash)) : ''}
         ${files}
       </div>
     </section>`;
