@@ -70,4 +70,6 @@ VS Code 1.85 or later, or Cursor, VSCodium, Windsurf or another compatible edito
 
 ---
 
+Design inspired by [@kvnkld](https://x.com/kvnkld).
+
 Found a bug or have an idea? [Open an issue](https://github.com/levijubb/gistry/issues). Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Released under the [MIT License](LICENSE).
