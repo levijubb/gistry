@@ -1,4 +1,6 @@
-:root {
+/* Tokens live on body (not :root) so the derived ones (--line, --chip, …) resolve against the
+   light theme's --text, which body.vscode-light overrides. */
+body {
   --font: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif);
   --mono: var(--vscode-editor-font-family, 'SF Mono', Menlo, Consolas, monospace);
 
