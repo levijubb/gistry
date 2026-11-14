@@ -711,7 +711,7 @@
     return `<header class="hdr">
       <span class="title">Commit History</span>${count}${repoName}
       <span class="spacer"></span>
-      ${S ? `<button class="ref-btn" id="refBtn" aria-haspopup="menu" aria-expanded="false" title="Switch branch">${isAll ? I.all : I.branch}<span class="label">${esc(label)}</span>${S && STACK_BRANCH.has(label) ? `<span class="lvl" style="--c: var(--lane-${STACK_BRANCH.get(label).color})">${STACK_BRANCH.get(label).level}/${STACK_BRANCH.get(label).total}</span>` : ''}${I.chevron}</button>` : ''}
+      ${S ? `<button class="ref-btn" id="refBtn" aria-haspopup="menu" aria-expanded="false" title="Switch branch">${isAll ? I.all : I.branch}<span class="label">${esc(label)}</span>${S && STACK_BRANCH.has(label) ? `<span class="lvl" style="--c: var(--lane-${STACK_BRANCH.get(label).color})">${STACK_BRANCH.get(label).level}/${STACK_BRANCH.get(label).total}</span>` : ''}${I.chevron}</button>` : '<span class="ref-btn ghost" aria-hidden="true"></span>'}
       <button class="icon-btn" id="refreshBtn" title="Refresh">${I.refresh}</button>
       ${mode === 'panel' ? `<button class="icon-btn" id="closeBtn" title="Close">${I.close}</button>` : ''}
       <div class="progress" id="progress"></div>
@@ -802,17 +802,9 @@
     return parts.join('\n');
   }
 
+  // Keep in sync with BOOT_SHELL in src/controller.ts, which pre-renders this so the first frame isn't blank.
   function skeletonHtml() {
-    const widths = [62, 48, 70, 40, 56, 66, 44, 58, 50, 64, 46, 60];
-    let rows = '';
-    let svg = '';
-    widths.forEach((w, i) => {
-      const y = TOP + i * ROW + ROW / 2;
-      svg += `<circle cx="${X0}" cy="${y}" r="3.4" fill="currentColor" opacity=".35"/>`;
-      rows += `<div class="row skel" style="padding-left:${64 - LIST_INSET}px"><div class="msg"><div class="bar" style="width:${w}%"></div></div><div class="author"><div class="bar" style="width:70%"></div></div></div>`;
-    });
-    const h = TOP + widths.length * ROW;
-    return `<div class="scroller"><div class="list"><svg class="graph c0" width="64" height="${h}" style="opacity:.6"><path d="M${X0} ${TOP + ROW / 2}V${h}" stroke="currentColor" stroke-opacity=".3" stroke-width="1.6"/>${svg}</svg><div class="rows" style="padding-top:${TOP}px">${rows}</div></div></div>`;
+    return `<div class="scroller"><div class="skel" aria-hidden="true">${'<div class="sk-row"><i></i><i></i><i></i><i></i><i></i></div>'.repeat(14)}</div></div>`;
   }
 
   function emptyHtml() {
@@ -831,14 +823,28 @@
   }
 
   function render(opts = {}) {
+    // The skeleton may already be on screen (pre-rendered by the extension, or from an earlier
+    // message). Rebuilding it would restart its fade-in, so only refresh the header.
+    if (view === 'skeleton' && app.querySelector('.card > .scroller > .skel')) {
+      const hdr = app.querySelector('.hdr');
+      if (hdr) hdr.outerHTML = headerHtml();
+      return;
+    }
     const prevScroll = app.querySelector('.scroller')?.scrollTop ?? 0;
     let body = '';
     if (view === 'skeleton') body = skeletonHtml();
     else if (view === 'empty') body = emptyHtml();
     else if (view === 'error') body = errorHtml();
-    else body = listHtml(!!opts.animate);
+    else body = listHtml();
 
-    app.innerHTML = `<div class="shell"><div class="card">${headerHtml()}${view === 'list' ? branchesHtml() : ''}${body}${drawerHtml()}</div></div>`;
+    const enter = view === 'list' && opts.animate;
+    app.innerHTML = `<div class="shell"><div class="card${enter ? ' enter' : ''}">${headerHtml()}${view === 'list' ? branchesHtml() : ''}${body}${drawerHtml()}</div></div>`;
+    if (enter) {
+      // Stagger the rows that are on screen; everything below shares the last delay.
+      app.querySelectorAll('.rows > .row').forEach((el, i) => {
+        if (i < 18) el.style.setProperty('--i', i);
+      });
+    }
     applyFocus();
 
     const sc = app.querySelector('.scroller');
@@ -846,7 +852,7 @@
     observeLoadMore();
   }
 
-  function listHtml(animate) {
+  function listHtml() {
     const commits = S.commits;
     const showUnc = S.uncommitted > 0 && S.tipIsHead;
     const offset = showUnc ? 1 : 0;
@@ -872,7 +878,7 @@
     const pad = width - LIST_INSET;
     return `<div class="scroller" id="scroller"><div class="list">
       ${graphSvg(commits, offset, showUnc, width, height, fadeFrom)}
-      <div class="rows${animate ? ' fade-in' : ''}${G.ccMode ? ' cc-mode' : ''}" style="padding-top:${TOP}px; --pad:${pad}px">${rows}</div>
+      <div class="rows${G.ccMode ? ' cc-mode' : ''}" style="padding-top:${TOP}px; --pad:${pad}px">${rows}</div>
       ${dangling ? '<div class="end-cap"></div>' : '<div style="height:10px"></div>'}
     </div></div>`;
   }
@@ -919,7 +925,7 @@
               ? '<span class="bin">binary</span>'
               : `${f.added ? `<span class="add">+${fmtN(f.added)}</span>` : ''}${f.removed ? `<span class="del">−${fmtN(f.removed)}</span>` : ''}`;
             const title = f.oldPath ? `${f.oldPath} → ${f.path}` : f.path;
-            return `<button class="file" data-fi="${i}" title="${esc(title)}"><span class="st ${f.status}">${f.status}</span><span class="fp"><span class="fn">${esc(fn)}</span><span class="dir">${esc(dir)}</span></span><span class="nums">${nums}</span></button>`;
+            return `<button class="file" data-fi="${i}" style="--i:${Math.min(i, 12)}" title="${esc(title)}"><span class="st ${f.status}">${f.status}</span><span class="fp"><span class="fn">${esc(fn)}</span><span class="dir">${esc(dir)}</span></span><span class="nums">${nums}</span></button>`;
           })
           .join('');
     }
@@ -1029,6 +1035,24 @@
     vscode.postMessage({ type: 'details', hash: c.hash, parent: c.parents[0] });
   }
 
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function drawerEl() {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = drawerHtml().trim();
+    return tpl.content.firstElementChild;
+  }
+
+  function closeDrawer(el) {
+    if (reduceMotion.matches) return el.remove();
+    el.classList.remove('opening');
+    el.style.maxHeight = `${el.offsetHeight}px`;
+    void el.offsetHeight;
+    el.classList.add('closing');
+    el.style.maxHeight = '0px';
+    setTimeout(() => el.remove(), 240);
+  }
+
   function select(hash, scroll) {
     selected = hash;
     if (hash) {
@@ -1039,22 +1063,35 @@
     const el = hash ? app.querySelector(`.row[data-hash="${hash}"]`) : null;
     el?.classList.add('sel');
     const card = app.querySelector('.card');
-    card?.querySelector('.drawer')?.remove();
-    if (card && hash) card.insertAdjacentHTML('beforeend', drawerHtml());
+    const open = card?.querySelector('.drawer:not(.closing)');
+    if (card && hash) {
+      const fresh = drawerEl();
+      if (open && fresh) {
+        // Already open: swap the contents in place so arrow-key browsing stays still.
+        open.classList.remove('files-in');
+        open.replaceChildren(...fresh.childNodes);
+      } else if (fresh) {
+        card.querySelectorAll('.drawer.closing').forEach((d) => d.remove());
+        fresh.classList.add('opening');
+        card.appendChild(fresh);
+      }
+    } else if (open) closeDrawer(open);
     if (scroll && el) el.scrollIntoView({ block: 'nearest' });
   }
 
   function refreshDrawer() {
-    const old = app.querySelector('.drawer');
+    const old = app.querySelector('.drawer:not(.closing)');
     if (!old) return;
-    const scrollTop = old.querySelector('.dr-scroll')?.scrollTop ?? 0;
-    old.outerHTML = drawerHtml();
-    const fresh = app.querySelector('.drawer');
-    if (fresh) {
-      fresh.style.animation = 'none';
-      const s = fresh.querySelector('.dr-scroll');
-      if (s) s.scrollTop = scrollTop;
-    }
+    const fresh = drawerEl();
+    if (!fresh) return old.remove();
+    const scroller = old.querySelector('.dr-scroll');
+    const scrollTop = scroller?.scrollTop ?? 0;
+    const wasLoading = !!old.querySelector('.files-head .dots');
+    // Replace children rather than the element so an in-flight open animation isn't cut short.
+    old.replaceChildren(...fresh.childNodes);
+    old.classList.toggle('files-in', wasLoading);
+    const s = old.querySelector('.dr-scroll');
+    if (s) s.scrollTop = scrollTop;
   }
 
   const focusStyle = document.createElement('style');
